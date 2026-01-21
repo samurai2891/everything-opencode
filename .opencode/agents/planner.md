@@ -1,7 +1,7 @@
 ---
 description: Strategic implementation planning specialist. Restates requirements, assesses risks, and creates step-by-step implementation plans. MUST BE USED before any significant code changes. WAITS for user confirmation before proceeding.
 mode: subagent
-model: openai/gpt-5.2-codex
+model: "{env:OPENCODE_MODEL:openai/gpt-5.2-codex}"
 temperature: 0.4
 tools:
   write: false

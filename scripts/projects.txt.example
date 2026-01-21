@@ -1,0 +1,21 @@
+# =============================================================================
+# Projects List for Batch Launch
+# =============================================================================
+#
+# Add one project path per line.
+# Lines starting with # are comments and will be ignored.
+# Empty lines are also ignored.
+# Paths can use ~ for home directory.
+#
+# =============================================================================
+
+# Example projects (uncomment and modify as needed)
+# ~/projects/main-app
+# ~/projects/api-server
+# ~/projects/frontend
+# ~/projects/mobile-app
+# ~/projects/shared-lib
+
+# You can also use absolute paths
+# /home/user/work/project-a
+# /home/user/work/project-b

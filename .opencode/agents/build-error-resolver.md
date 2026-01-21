@@ -1,7 +1,7 @@
 ---
 description: Build and TypeScript error resolution specialist. Use PROACTIVELY when build fails or type errors occur. Fixes build/type errors only with minimal diffs, no architectural edits. Focuses on getting the build green quickly.
 mode: subagent
-model: openai/gpt-5.2-codex
+model: "{env:OPENCODE_MODEL:openai/gpt-5.2-codex}"
 temperature: 0.2
 tools:
   write: true

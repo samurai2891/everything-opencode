@@ -1,0 +1,72 @@
+# =============================================================================
+# Tmuxp Configuration Template for Opencode Batch Launch
+# =============================================================================
+#
+# Usage:
+#   1. Copy this file and customize for your projects
+#   2. Set environment variables or edit the global_options
+#   3. Run: tmuxp load your-config.yaml
+#
+# Environment Variables:
+#   OPENCODE_MODEL          - Model to use (default: openai/gpt-5.2-codex)
+#   OPENCODE_SMALL_MODEL    - Small model for quick tasks
+#   OPENCODE_PLAN_MODEL     - Model for planning tasks
+#
+# =============================================================================
+
+session_name: opencode-workspace
+
+# Global environment variables for all windows
+global_options:
+  default-shell: /bin/bash
+
+environment:
+  OPENCODE_MODEL: "${OPENCODE_MODEL:-openai/gpt-5.2-codex}"
+  OPENCODE_SMALL_MODEL: "${OPENCODE_SMALL_MODEL:-openai/gpt-5.2-codex}"
+  OPENCODE_PLAN_MODEL: "${OPENCODE_PLAN_MODEL:-openai/gpt-5.2-codex}"
+
+windows:
+  # Project 1 - Main development
+  - window_name: project-main
+    layout: main-vertical
+    start_directory: ~/projects/main
+    shell_command_before:
+      - export OPENCODE_MODEL="${OPENCODE_MODEL:-openai/gpt-5.2-codex}"
+    panes:
+      - shell_command:
+          - opencode
+      - shell_command:
+          - # Terminal for manual commands
+
+  # Project 2 - API development
+  - window_name: project-api
+    layout: main-vertical
+    start_directory: ~/projects/api
+    shell_command_before:
+      - export OPENCODE_MODEL="${OPENCODE_MODEL:-openai/gpt-5.2-codex}"
+    panes:
+      - shell_command:
+          - opencode
+      - shell_command:
+          - npm run dev
+
+  # Project 3 - Frontend
+  - window_name: project-frontend
+    layout: main-vertical
+    start_directory: ~/projects/frontend
+    shell_command_before:
+      - export OPENCODE_MODEL="${OPENCODE_MODEL:-openai/gpt-5.2-codex}"
+    panes:
+      - shell_command:
+          - opencode
+      - shell_command:
+          - npm run dev
+
+  # Monitoring window
+  - window_name: monitoring
+    layout: even-horizontal
+    panes:
+      - shell_command:
+          - htop
+      - shell_command:
+          - # Logs or other monitoring

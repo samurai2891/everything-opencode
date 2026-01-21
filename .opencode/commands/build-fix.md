@@ -1,7 +1,7 @@
 ---
 description: Diagnose and fix build/lint/type errors. Runs build, captures errors, analyzes root cause, and applies fixes iteratively.
 agent: build-error-resolver
-model: openai/gpt-5.2-codex
+model: "{env:OPENCODE_MODEL:openai/gpt-5.2-codex}"
 ---
 
 # Build Fix Command

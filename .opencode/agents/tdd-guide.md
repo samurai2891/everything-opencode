@@ -1,7 +1,7 @@
 ---
 description: Test-Driven Development specialist enforcing write-tests-first methodology. Use PROACTIVELY when writing new features, fixing bugs, or refactoring code. Ensures 80%+ test coverage.
 mode: subagent
-model: openai/gpt-5.2-codex
+model: "{env:OPENCODE_MODEL:openai/gpt-5.2-codex}"
 temperature: 0.3
 tools:
   write: true

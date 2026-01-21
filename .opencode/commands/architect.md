@@ -1,7 +1,7 @@
 ---
 description: Design system architecture and technical decisions. Creates architecture diagrams, evaluates trade-offs, and documents decisions in ADRs.
 agent: architect
-model: openai/gpt-5.2-codex
+model: "{env:OPENCODE_MODEL:openai/gpt-5.2-codex}"
 ---
 
 # Architect Command

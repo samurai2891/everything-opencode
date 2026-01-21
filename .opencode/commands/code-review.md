@@ -1,7 +1,7 @@
 ---
 description: Comprehensive security and quality review of uncommitted changes. Checks for hardcoded secrets, vulnerabilities, code quality issues, and best practices.
 agent: code-reviewer
-model: openai/gpt-5.2-codex
+model: "{env:OPENCODE_MODEL:openai/gpt-5.2-codex}"
 ---
 
 # Code Review Command
