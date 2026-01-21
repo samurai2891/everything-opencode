@@ -40,13 +40,39 @@ cd everything-opencode
 
 ### 2. 設定ファイルの配置
 
-```bash
-# 現在のプロジェクトにインストールする場合
-./install.sh
+#### オプションA: グローバルインストール（推奨）
 
-# グローバル設定としてインストールする場合
-./install.sh --global
+すべてのプロジェクトで使用できるように、Opencodeのグローバル設定ディレクトリ（`~/.config/opencode/`）に配置します。
+
+```bash
+./install-global.sh
 ```
+
+これにより、以下がインストールされます：
+- エージェント（9個） → `~/.config/opencode/agents/`
+- コマンド（9個） → `~/.config/opencode/commands/`
+- スキル（5個） → `~/.config/opencode/skills/`
+- ツール（Arena System） → `~/.config/opencode/tools/`
+- スクリプト（バッチ起動） → `~/.config/opencode/scripts/`
+- グローバル設定 → `~/.config/opencode/opencode.json`
+
+**メリット**:
+- どのプロジェクトでも即座に利用可能
+- 一度設定すれば、すべてのプロジェクトで一貫した開発環境
+- tmux/Ghosttyのどのセッションからでもアクセス可能
+
+#### オプションB: プロジェクト単位でインストール
+
+特定のプロジェクトにのみ配置する場合は、プロジェクトルートで以下を実行します。
+
+```bash
+./install.sh
+```
+
+**メリット**:
+- プロジェクトごとにカスタマイズ可能
+- Git管理できる
+- チーム全体で共有可能
 
 ### 3. 環境変数の設定
 

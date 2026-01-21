@@ -190,7 +190,7 @@
   
   "instructions": [
     "AGENTS.md",
-    ".opencode/skills/*.md"
+    "skills/*.md"
   ],
   
   "permission": {
