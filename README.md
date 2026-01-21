@@ -10,6 +10,7 @@
 ## 主な特徴
 
 - **専門家エージェント群**: 計画、コーディング、レビュー、セキュリティ監査など、各タスクに特化した9種類の専門家AIエージェントを提供します。
+- **Arena Competition System**: 複数AIエージェントが並列で競争し、Quality Gate → ランキング → 勝者統合を経て最高品質のコードを生成する革新的なシステム。
 - **コンテキストコマンド**: `/plan` や `/code-review` など、直感的なコマンドで各エージェントを呼び出し、開発フローを円滑に進めます。
 - **共有スキルセット**: コーディング規約、セキュリティガイドライン、Gitワークフローなどのベストプラクティスを「スキル」として定義し、全エージェントが一貫した品質を維持します。
 - **環境変数によるモデル切り替え**: 実行時に任意のモデルを指定可能。tmux/Tmuxp/SDKからの大量一括起動時に外部からモデルを指定できます。
@@ -91,6 +92,112 @@ OPENCODE_SMALL_MODEL=openai/gpt-5.2-codex
 OPENCODE_PLAN_MODEL=openai/gpt-5.2-codex
 ```
 
+---
+
+## Arena Competition System
+
+**Arena Competition System** は、複数のAIエージェントが並列で競争し、Quality Gate → ランキング → 勝者統合 → 最終評価を経て、最高品質のコードを生成する革新的なシステムです。
+
+### システム概要
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Arena Competition System                      │
+├─────────────────────────────────────────────────────────────────┤
+│  [Central Planner] ─────────────────────────────────────────────│
+│         │                                                        │
+│         ▼                                                        │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │           Competition Layer (Track A/B/C)                 │   │
+│  │  ┌─────┐  ┌─────┐  ┌─────┐  ┌─────┐  ┌─────┐           │   │
+│  │  │ A01 │  │ A02 │  │ A03 │  │ B01 │  │ C01 │  ...      │   │
+│  │  └──┬──┘  └──┬──┘  └──┬──┘  └──┬──┘  └──┬──┘           │   │
+│  └─────┼────────┼────────┼────────┼────────┼────────────────┘   │
+│        │        │        │        │        │                     │
+│        ▼        ▼        ▼        ▼        ▼                     │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │                    Quality Gate                           │   │
+│  │  - Auto tests (make test / pytest / npm test)            │   │
+│  │  - Lint / Type check                                      │   │
+│  │  - Coverage threshold                                     │   │
+│  └─────────────────────────┬────────────────────────────────┘   │
+│                            │                                     │
+│                            ▼                                     │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │                    Ranking & Selection                    │   │
+│  │  - PASS > DIRTY > FAIL                                   │   │
+│  │  - Faster execution wins (same status)                   │   │
+│  │  - winners.json generated                                 │   │
+│  └─────────────────────────┬────────────────────────────────┘   │
+│                            │                                     │
+│                            ▼                                     │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │                    Integration                            │   │
+│  │  - Merge winners into arena/integration branch           │   │
+│  │  - Final gate on integrated code                         │   │
+│  │  - Conflict resolution (if needed)                       │   │
+│  └─────────────────────────┬────────────────────────────────┘   │
+│                            │                                     │
+│                            ▼                                     │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │                    Final Product                          │   │
+│  │  ✅ All gates passed                                      │   │
+│  │  ✅ Best implementations merged                           │   │
+│  │  ✅ Ready for release                                     │   │
+│  └──────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### アリーナの起動
+
+```bash
+# /arena コマンドでアリーナを起動
+opencode
+> /arena
+
+# または直接gen_tmuxp.pyを使用
+python3 tools/gen_tmuxp.py generate --n 3 --gate-cmd "make test"
+tmuxp load .tmuxp/arena.json
+```
+
+### アリーナエージェント
+
+| エージェント | 役割 |
+|:---|:---|
+| `central-planner` | 要件分析、タスク分解、競争の監視、最終統合を統括 |
+| `comp-a` | Track A競争チーム - コア機能の実装 |
+| `comp-b` | Track B競争チーム - データ層とインフラ |
+| `comp-c` | Track C競争チーム - API設計と統合 |
+| `qa-gate` | Quality Gate - 品質評価とフィードバック |
+| `integrator` | 勝者の統合、コンフリクト解決、最終成果物の準備 |
+
+### 自動完走フロー
+
+1. `/arena` コマンドで中央プランナーを起動
+2. 要件を入力すると、中央プランナーがタスクを分解
+3. `python3 tools/gen_tmuxp.py generate` でアリーナを生成
+4. `tmuxp load .tmuxp/arena.json` で全チームを起動
+5. 各チームが並列で実装を進める
+6. Quality Gateが自動的に評価
+7. ランキングが更新され、勝者が決定
+8. Integratorが勝者をマージ
+9. 最終Gateをパスして完了
+
+### パイプライン実行
+
+```bash
+# pipelineウィンドウでEnterを押すと自動実行
+# または手動で実行
+python3 tools/gen_tmuxp.py pipeline --wait
+
+# 個別に実行
+python3 tools/gen_tmuxp.py gate --watch --interval 20
+python3 tools/gen_tmuxp.py rank --watch --interval 20
+python3 tools/gen_tmuxp.py integrate --reset --final-gate
+```
+
+---
+
 ## 大量一括起動（組織向け）
 
 tmux、Tmuxp、Opencode SDKを使用して、複数プロジェクトを異なるモデルで一括起動できます。
@@ -146,6 +253,8 @@ python scripts/sdk_batch_launcher.py -m "openai/gpt-5.2-codex" -p projects.txt
 python scripts/sdk_batch_launcher.py -m "anthropic/claude-sonnet-4-20250514" -p projects.txt -c "/plan"
 ```
 
+---
+
 ## 提供されるコンポーネント
 
 ### エージェント (Agents)
@@ -175,6 +284,7 @@ python scripts/sdk_batch_launcher.py -m "anthropic/claude-sonnet-4-20250514" -p 
 | `/e2e` | ユーザーフローに基づいたE2Eテストを生成します |
 | `/refactor` | 指定されたコードのリファクタリングやクリーンアップを行います |
 | `/doc-sync` | コードの変更に合わせてドキュメントを更新します |
+| `/arena` | Arena Competition Systemを起動し、並列競争を開始します |
 
 ### スキル (Skills)
 
@@ -193,9 +303,36 @@ everything-opencode/
 ├── .env.example               # 環境変数テンプレート
 ├── install.sh                 # インストールスクリプト
 ├── .opencode/
-│   ├── agents/                # エージェント定義（9ファイル）
-│   ├── commands/              # スラッシュコマンド（9ファイル）
+│   ├── agents/                # エージェント定義（15ファイル）
+│   │   ├── planner.md
+│   │   ├── code-reviewer.md
+│   │   ├── security-reviewer.md
+│   │   ├── architect.md
+│   │   ├── tdd-guide.md
+│   │   ├── build-error-resolver.md
+│   │   ├── e2e-runner.md
+│   │   ├── refactor-cleaner.md
+│   │   ├── doc-updater.md
+│   │   ├── central-planner.md   # Arena
+│   │   ├── comp-a.md            # Arena
+│   │   ├── comp-b.md            # Arena
+│   │   ├── comp-c.md            # Arena
+│   │   ├── qa-gate.md           # Arena
+│   │   └── integrator.md        # Arena
+│   ├── commands/              # スラッシュコマンド（10ファイル）
+│   │   ├── plan.md
+│   │   ├── code-review.md
+│   │   ├── security-audit.md
+│   │   ├── architect.md
+│   │   ├── tdd.md
+│   │   ├── build-fix.md
+│   │   ├── e2e.md
+│   │   ├── refactor.md
+│   │   ├── doc-sync.md
+│   │   └── arena.md             # Arena
 │   └── skills/                # スキル定義（5ファイル）
+├── tools/                     # アリーナツール
+│   └── gen_tmuxp.py           # tmuxp生成・パイプライン実行
 └── scripts/                   # バッチ起動スクリプト
     ├── batch-launch.sh        # tmux一括起動
     ├── generate-tmuxp.sh      # Tmuxp設定生成
@@ -206,11 +343,23 @@ everything-opencode/
 
 ## 推奨ワークフロー
 
+### 通常の開発
+
 1. **計画**: 複雑な機能に着手する前に `/plan` で実装計画を立てます
 2. **開発**: `/tdd` を使用して、テストを書きながら機能開発を進めます
 3. **レビュー**: コミットする前に `/code-review` を実行し、品質をチェックします
 4. **セキュリティ**: リリース前や重要な変更後には `/security-audit` で脆弱性がないか確認します
 5. **ドキュメント**: `/doc-sync` を使い、コードとドキュメントの整合性を保ちます
+
+### 大規模開発（Arena使用）
+
+1. **アリーナ起動**: `/arena` で中央プランナーを起動
+2. **要件入力**: 実装したい機能の要件を入力
+3. **競争開始**: 中央プランナーがタスクを分解し、各チームに割り当て
+4. **並列実装**: 複数チームが同時に実装を進める
+5. **品質評価**: Quality Gateが自動的に評価
+6. **勝者統合**: 最高品質の実装が自動的にマージ
+7. **最終確認**: 統合後のコードが最終Gateをパス
 
 ## クレジット
 

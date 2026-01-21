@@ -108,6 +108,83 @@
         "edit": false,
         "bash": false
       }
+    },
+    "central-planner": {
+      "mode": "subagent",
+      "description": "Arena central planner - orchestrates competition and task distribution",
+      "model": "{env:OPENCODE_MODEL:openai/gpt-5.2-codex}",
+      "temperature": 0.3,
+      "tools": {
+        "write": true,
+        "edit": true,
+        "bash": true
+      }
+    },
+    "comp-a": {
+      "mode": "subagent",
+      "description": "Arena competition team A - core features implementation",
+      "model": "{env:OPENCODE_MODEL:openai/gpt-5.2-codex}",
+      "temperature": 0.2,
+      "tools": {
+        "write": true,
+        "edit": true,
+        "bash": true
+      }
+    },
+    "comp-b": {
+      "mode": "subagent",
+      "description": "Arena competition team B - data layer and infrastructure",
+      "model": "{env:OPENCODE_MODEL:openai/gpt-5.2-codex}",
+      "temperature": 0.2,
+      "tools": {
+        "write": true,
+        "edit": true,
+        "bash": true
+      }
+    },
+    "comp-c": {
+      "mode": "subagent",
+      "description": "Arena competition team C - API design and integration",
+      "model": "{env:OPENCODE_MODEL:openai/gpt-5.2-codex}",
+      "temperature": 0.2,
+      "tools": {
+        "write": true,
+        "edit": true,
+        "bash": true
+      }
+    },
+    "comp-n": {
+      "mode": "subagent",
+      "description": "Arena competition team N - tests track (optional)",
+      "model": "{env:OPENCODE_MODEL:openai/gpt-5.2-codex}",
+      "temperature": 0.2,
+      "tools": {
+        "write": true,
+        "edit": true,
+        "bash": true
+      }
+    },
+    "qa-gate": {
+      "mode": "subagent",
+      "description": "Arena QA gate agent - evaluates quality and provides feedback",
+      "model": "{env:OPENCODE_MODEL:openai/gpt-5.2-codex}",
+      "temperature": 0.2,
+      "tools": {
+        "write": true,
+        "edit": true,
+        "bash": true
+      }
+    },
+    "integrator": {
+      "mode": "subagent",
+      "description": "Arena integrator agent - merges winners and resolves conflicts",
+      "model": "{env:OPENCODE_MODEL:openai/gpt-5.2-codex}",
+      "temperature": 0.2,
+      "tools": {
+        "write": true,
+        "edit": true,
+        "bash": true
+      }
     }
   },
   
@@ -127,7 +204,7 @@
   },
   
   "watcher": {
-    "ignore": ["node_modules/**", "dist/**", ".git/**", "*.log"]
+    "ignore": ["node_modules/**", "dist/**", ".git/**", "*.log", "worktrees/**", ".arena/**"]
   },
   
   "formatter": {
