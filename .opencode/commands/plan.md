@@ -1,7 +1,7 @@
 ---
 description: Restate requirements, assess risks, and create step-by-step implementation plan. WAIT for user CONFIRM before touching any code.
 agent: planner
-model: z-ai/glm-4.7
+model: openai/gpt-5.2-codex
 ---
 
 # Plan Command

@@ -1,7 +1,7 @@
 ---
 description: Expert code review specialist. Proactively reviews code for quality, security, and maintainability. Use immediately after writing or modifying code. MUST BE USED for all code changes.
 mode: subagent
-model: z-ai/glm-4.7
+model: openai/gpt-5.2-codex
 temperature: 0.2
 tools:
   write: false

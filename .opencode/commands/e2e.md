@@ -1,7 +1,7 @@
 ---
 description: Generate and run end-to-end tests with Playwright. Creates test journeys, runs tests, captures screenshots/videos/traces, and uploads artifacts.
 agent: e2e-runner
-model: z-ai/glm-4.7
+model: openai/gpt-5.2-codex
 ---
 
 # E2E Command
