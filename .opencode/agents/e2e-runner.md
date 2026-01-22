@@ -1,7 +1,7 @@
 ---
 description: End-to-end testing specialist using Playwright. Generates, maintains, and executes E2E tests for critical user journeys. Use PROACTIVELY for testing user flows, UI interactions, and multi-step processes.
 mode: subagent
-model: "{env:OPENCODE_MODEL:openai/gpt-5.2-codex}"
+model: "openai/gpt-5.2-codex"
 temperature: 0.3
 tools:
   write: true

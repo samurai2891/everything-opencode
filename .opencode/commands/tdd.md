@@ -1,7 +1,7 @@
 ---
 description: Enforce test-driven development workflow. Scaffold interfaces, generate tests FIRST, then implement minimal code to pass. Ensure 80%+ coverage.
 agent: tdd-guide
-model: "{env:OPENCODE_MODEL:openai/gpt-5.2-codex}"
+model: "openai/gpt-5.2-codex"
 ---
 
 # TDD Command

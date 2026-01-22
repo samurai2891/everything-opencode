@@ -1,7 +1,7 @@
 ---
 description: Code refactoring and dead code removal specialist. Safely identifies and removes unused code with test verification. Use PROACTIVELY when codebase needs cleanup, after major features, or when technical debt accumulates.
 mode: subagent
-model: "{env:OPENCODE_MODEL:openai/gpt-5.2-codex}"
+model: "openai/gpt-5.2-codex"
 temperature: 0.2
 tools:
   write: true

@@ -1,7 +1,7 @@
 ---
 description: Deep security audit for authentication, authorization, input validation, and cryptographic operations. Generates detailed vulnerability report with OWASP references.
 agent: security-reviewer
-model: "{env:OPENCODE_MODEL:openai/gpt-5.2-codex}"
+model: "openai/gpt-5.2-codex"
 ---
 
 # Security Audit Command

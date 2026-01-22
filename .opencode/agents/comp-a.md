@@ -1,6 +1,6 @@
 ---
 mode: subagent
-model: "{env:OPENCODE_MODEL:openai/gpt-5.2-codex}"
+model: "openai/gpt-5.2-codex"
 temperature: 0.2
 tools:
   write: true

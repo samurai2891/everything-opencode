@@ -1,7 +1,7 @@
 ---
 description: Synchronize documentation with code changes. Updates README, API docs, and generates documentation from source files.
 agent: doc-updater
-model: "{env:OPENCODE_MODEL:openai/gpt-5.2-codex}"
+model: "openai/gpt-5.2-codex"
 ---
 
 # Doc Sync Command

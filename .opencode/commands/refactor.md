@@ -1,7 +1,7 @@
 ---
 description: Safely remove dead code and improve code quality. Runs analysis tools, verifies with tests, and generates cleanup report.
 agent: refactor-cleaner
-model: "{env:OPENCODE_MODEL:openai/gpt-5.2-codex}"
+model: "openai/gpt-5.2-codex"
 ---
 
 # Refactor Command

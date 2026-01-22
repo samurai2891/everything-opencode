@@ -1,7 +1,7 @@
 ---
 description: Arena Competition System - 複数AIエージェントによる並列競争開発を自動起動・完走
 agent: central-planner
-model: "{env:OPENCODE_MODEL:openai/gpt-5.2-codex}"
+model: "openai/gpt-5.2-codex"
 ---
 
 # Arena Competition System

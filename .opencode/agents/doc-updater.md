@@ -1,7 +1,7 @@
 ---
 description: Documentation synchronization specialist. Keeps documentation in sync with code changes. Use PROACTIVELY after code changes, API updates, or configuration changes to ensure docs stay current.
 mode: subagent
-model: "{env:OPENCODE_MODEL:openai/gpt-5.2-codex}"
+model: "openai/gpt-5.2-codex"
 temperature: 0.3
 tools:
   write: true
