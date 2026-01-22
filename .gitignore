@@ -1,0 +1,147 @@
+# ===========================================
+# Everything OpenCode - .gitignore
+# ===========================================
+
+# -----------------------------------------
+# 環境変数・機密情報
+# -----------------------------------------
+.env
+.env.local
+.env.*.local
+*.env
+secrets/
+credentials/
+
+# -----------------------------------------
+# APIキー・トークン
+# -----------------------------------------
+*.key
+*.pem
+*.p12
+*.pfx
+api_keys.txt
+tokens.txt
+
+# -----------------------------------------
+# Opencode生成ファイル
+# -----------------------------------------
+.opencode/cache/
+.opencode/logs/
+.opencode/tmp/
+.opencode/sessions/
+*.opencode.log
+
+# -----------------------------------------
+# Arena System生成ファイル
+# -----------------------------------------
+.arena/
+.tmuxp/arena.json
+.tmuxp/arena-*.json
+arena/results/
+arena/rankings/
+arena/integration/
+
+# -----------------------------------------
+# Python
+# -----------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+venv/
+.venv/
+ENV/
+env/
+.env/
+
+# -----------------------------------------
+# Node.js
+# -----------------------------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn-integrity
+
+# -----------------------------------------
+# IDE・エディタ
+# -----------------------------------------
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-workspace
+*.sublime-project
+
+# -----------------------------------------
+# OS生成ファイル
+# -----------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# -----------------------------------------
+# ログ・一時ファイル
+# -----------------------------------------
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# -----------------------------------------
+# テスト・カバレッジ
+# -----------------------------------------
+coverage/
+.coverage
+htmlcov/
+.tox/
+.nox/
+.pytest_cache/
+.hypothesis/
+
+# -----------------------------------------
+# ビルド成果物
+# -----------------------------------------
+*.o
+*.a
+*.lib
+*.dll
+*.exe
+*.out
+
+# -----------------------------------------
+# バックアップファイル
+# -----------------------------------------
+*.backup.*
+*.bak
+*~
