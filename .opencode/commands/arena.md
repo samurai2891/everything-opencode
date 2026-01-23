@@ -1,96 +1,60 @@
 ---
 description: Arena Competition System - 複数LLMエージェントを並列実行して競争させる
-model: openai/gpt-5.2-codex
 ---
 
-# Arena Competition System
+# Arena Competition System 起動結果
 
-あなたはArena Competition Systemの起動エージェントです。ユーザーの要件を受け取り、複数のLLMエージェントを並列で起動して競争させます。
+以下のコマンドを実行してArena Competition Systemを起動しました：
 
-## あなたの役割
+!`~/.config/opencode/tools/arena-launcher.sh "$ARGUMENTS" 2>&1`
 
-1. ユーザーから要件を受け取る
-2. `arena-launcher.sh` スクリプトを実行してtmuxセッションを起動する
-3. 起動後の確認方法をユーザーに案内する
+## 起動後の確認方法
 
-## 入力された要件
+Arenaセッションが起動しました。以下の手順で確認してください：
 
-```
-$ARGUMENTS
-```
+### 1. tmuxセッションにアタッチ
 
-## 実行手順
-
-### Step 1: 要件の確認
-
-ユーザーが入力した要件を確認してください。要件が不明確な場合は、以下を確認してください：
-- 何を作成するのか
-- 必要な機能は何か
-- 技術的な制約はあるか
-
-### Step 2: arena-launcher.sh を実行
-
-以下のbashコマンドを**必ず実行**してください：
+**別のターミナルウィンドウ**を開いて、以下のコマンドを実行してください：
 
 ```bash
-# グローバルインストールの場合
-~/.config/opencode/tools/arena-launcher.sh "$ARGUMENTS"
-
-# または、プロジェクトローカルの場合
-./tools/arena-launcher.sh "$ARGUMENTS"
+tmux attach -t arena
 ```
 
-**重要**: このコマンドは必ず `bash` ツールで実行してください。提案するだけでは不十分です。
+### 2. ウィンドウ一覧
 
-### Step 3: 実行例
+| ウィンドウ | 名前 | 役割 |
+|-----------|------|------|
+| 0 | planner | 中央プランナー（タスク分解・監視） |
+| 1 | comp-A | チームA（コア機能実装） |
+| 2 | comp-B | チームB（データ層・インフラ） |
+| 3 | comp-C | チームC（API設計・統合） |
+| 4 | qa-gate | QA Gate（品質評価） |
+| 5 | integrator | 統合担当（最終統合） |
 
-ユーザーが「3Dブロック崩しゲームを作成してください」と入力した場合：
+### 3. ウィンドウ切り替え
 
-```bash
-~/.config/opencode/tools/arena-launcher.sh "3Dブロック崩しゲームを作成してください。WebGLを使用し、スコア機能、レベル機能、パワーアップアイテムを実装してください。"
 ```
-
-### Step 4: 起動後の案内
-
-スクリプト実行後、以下をユーザーに案内してください：
-
-```
-Arenaセッションが起動しました！
-
-確認方法:
-  tmux attach -t arena
-
-ウィンドウ一覧:
-  0: planner    - 中央プランナー（タスク分解・監視）
-  1: comp-A     - チームA（コア機能実装）
-  2: comp-B     - チームB（データ層・インフラ）
-  3: comp-C     - チームC（API設計・統合）
-  4: qa-gate    - QA Gate（品質評価）
-  5: integrator - 統合担当（最終統合）
-
-ウィンドウ切り替え:
-  Ctrl+b, n  (次のウィンドウ)
-  Ctrl+b, p  (前のウィンドウ)
-  Ctrl+b, 0-5 (番号でウィンドウ選択)
+Ctrl+b, n     次のウィンドウ
+Ctrl+b, p     前のウィンドウ
+Ctrl+b, 0-5   番号でウィンドウ選択
 ```
 
 ## 注意事項
 
-- tmuxがインストールされている必要があります
-- 既存の `arena` セッションがある場合は自動的に削除されます
-- 各ウィンドウでOpencodeが起動し、それぞれのエージェントが並列で動作します
+- このOpencodeセッションは終了しても構いません
+- 各ウィンドウで別々のOpencodeエージェントが並列で動作しています
+- 進捗を確認するには、tmuxセッションにアタッチしてください
 
 ## トラブルシューティング
 
-### スクリプトが見つからない場合
+### セッションが見つからない場合
 
 ```bash
-# スクリプトの場所を確認
-ls -la ~/.config/opencode/tools/arena-launcher.sh
-ls -la ./tools/arena-launcher.sh
+# セッション一覧を確認
+tmux list-sessions
 
-# 実行権限を付与
-chmod +x ~/.config/opencode/tools/arena-launcher.sh
+# arenaセッションがない場合は手動で起動
+~/.config/opencode/tools/arena-launcher.sh "要件テキスト"
 ```
 
 ### tmuxがインストールされていない場合
@@ -102,7 +66,3 @@ sudo apt install tmux
 # macOS
 brew install tmux
 ```
-
----
-
-**今すぐ上記のStep 2のbashコマンドを実行してください。**
