@@ -28,7 +28,35 @@ sudo apt install gh
 brew install tmux gh
 ```
 
-## インストール手順
+## 🚀 クイックスタート（最短手順）
+
+バックアップ不要で、すぐにインストール・更新したい場合は以下のワンライナーを実行してください。
+
+### ワンライナーでインストール
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/samurai2891/everything-opencode/main/update-global.sh | bash
+```
+
+または、手動で実行：
+
+```bash
+cd /tmp && rm -rf everything-opencode && \
+gh repo clone samurai2891/everything-opencode && \
+cd everything-opencode && bash install-global.sh
+```
+
+### 更新も同じコマンド
+
+既存の設定を上書きして更新する場合も、同じコマンドを実行するだけです。
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/samurai2891/everything-opencode/main/update-global.sh | bash
+```
+
+---
+
+## インストール手順（詳細版）
 
 ### Step 1: 既存のグローバル設定をバックアップ（オプション）
 
@@ -260,22 +288,34 @@ echo $OPENAI_API_KEY
 
 新しいバージョンが公開された場合は、以下の手順で更新します。
 
-```bash
-# 1. 最新版をクローン
-cd /tmp
-rm -rf everything-opencode
-gh repo clone samurai2891/everything-opencode
+### 方法1: ワンライナーで更新（推奨）
 
-# 2. 既存の設定をバックアップ（オプション）
+```bash
+curl -fsSL https://raw.githubusercontent.com/samurai2891/everything-opencode/main/update-global.sh | bash
+```
+
+### 方法2: 手動で更新
+
+```bash
+cd /tmp && rm -rf everything-opencode && \
+gh repo clone samurai2891/everything-opencode && \
+cd everything-opencode && bash install-global.sh
+```
+
+### 方法3: バックアップを取りながら更新
+
+```bash
+# 1. 既存の設定をバックアップ
 BACKUP_DIR=~/.config/opencode.backup.$(date +%Y%m%d_%H%M%S)
 cp -r ~/.config/opencode "$BACKUP_DIR"
+echo "バックアップ: $BACKUP_DIR"
+
+# 2. 最新版をクローン
+cd /tmp && rm -rf everything-opencode
+gh repo clone samurai2891/everything-opencode
 
 # 3. 新しい設定をインストール
-cd /tmp/everything-opencode
-bash install-global.sh
-
-# 4. 環境変数を再設定（必要に応じて）
-cp ~/.config/opencode/.env.backup ~/.config/opencode/.env
+cd /tmp/everything-opencode && bash install-global.sh
 ```
 
 ## 参考リンク
