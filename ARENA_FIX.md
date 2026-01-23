@@ -139,6 +139,44 @@ Ctrl+b, 5  # integrator
    opencode
    ```
 
+## 最終的な修正内容（解決済）
+
+### 問題
+
+`tmux send-keys` コマンドでプロンプトテキストを送信する際、テキストに `--` や `-` で始まる行があると、tmuxがそれをオプションとして誤認識してエラーが発生していました。
+
+```
+tmux: unknown option --  
+usage: send-keys [-FHlMRX] [-N repeat-count] [-t target-pane] key ...
+```
+
+### 解決策
+
+`tmux send-keys` コマンドに `--` オプションを追加し、それ以降の引数をすべてテキストとして扱うようにしました。
+
+```bash
+# 修正前
+tmux send-keys -t "$SESSION_NAME:planner" "$line"
+
+# 修正後
+tmux send-keys -t "$SESSION_NAME:planner" -- "$line"
+```
+
+### 検証結果
+
+修正後、すべてのウィンドウが正しく作成されることを確認しました。
+
+```
+0: planner* (1 panes)
+1: comp-A (1 panes)
+2: comp-B (1 panes)
+3: comp-C (1 panes)
+4: qa-gate (1 panes)
+5: integrator- (1 panes)
+```
+
+---
+
 ## 今後の改善案
 
 1. **エージェント指定オプションの使用**

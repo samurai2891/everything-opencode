@@ -206,10 +206,10 @@ create_arena_session() {
     sleep 3
     # プロンプトファイルの内容を1行ずつ送信
     while IFS= read -r line; do
-        tmux send-keys -t "$SESSION_NAME:planner" "$line"
+        tmux send-keys -t "$SESSION_NAME:planner" -- "$line"
         sleep 0.1
     done < "$planner_file"
-    tmux send-keys -t "$SESSION_NAME:planner" Enter
+    tmux send-keys -t "$SESSION_NAME:planner" -- Enter
     log_success "Central Plannerを起動しました"
     
     # 3. 競争チームウィンドウを作成
@@ -225,10 +225,10 @@ create_arena_session() {
             sleep 3
             # プロンプトファイルの内容を1行ずつ送信
             while IFS= read -r line; do
-                tmux send-keys -t "$SESSION_NAME:$team" "$line"
+                tmux send-keys -t "$SESSION_NAME:$team" -- "$line"
                 sleep 0.1
             done < "$team_file"
-            tmux send-keys -t "$SESSION_NAME:$team" Enter
+            tmux send-keys -t "$SESSION_NAME:$team" -- Enter
             log_success "チーム $team を起動しました"
         fi
     done
@@ -239,10 +239,10 @@ create_arena_session() {
     tmux send-keys -t "$SESSION_NAME:qa-gate" "$OPENCODE_CMD" Enter
     sleep 3
     while IFS= read -r line; do
-        tmux send-keys -t "$SESSION_NAME:qa-gate" "$line"
+        tmux send-keys -t "$SESSION_NAME:qa-gate" -- "$line"
         sleep 0.1
     done < "$qa_file"
-    tmux send-keys -t "$SESSION_NAME:qa-gate" Enter
+    tmux send-keys -t "$SESSION_NAME:qa-gate" -- Enter
     log_success "QA Gateを起動しました"
     
     # 5. Integratorウィンドウを作成
@@ -251,10 +251,10 @@ create_arena_session() {
     tmux send-keys -t "$SESSION_NAME:integrator" "$OPENCODE_CMD" Enter
     sleep 3
     while IFS= read -r line; do
-        tmux send-keys -t "$SESSION_NAME:integrator" "$line"
+        tmux send-keys -t "$SESSION_NAME:integrator" -- "$line"
         sleep 0.1
     done < "$integrator_file"
-    tmux send-keys -t "$SESSION_NAME:integrator" Enter
+    tmux send-keys -t "$SESSION_NAME:integrator" -- Enter
     log_success "Integratorを起動しました"
     
     # 6. 最初のウィンドウ（planner）に戻る
