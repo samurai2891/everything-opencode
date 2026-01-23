@@ -52,7 +52,9 @@ echo "   ✅ AGENTS.md をコピーしました"
 echo "🛠️  ツールをコピー中..."
 mkdir -p "${OPENCODE_GLOBAL_DIR}/tools"
 cp -r "${SCRIPT_DIR}/tools/"* "${OPENCODE_GLOBAL_DIR}/tools/"
-echo "   ✅ tools/ をコピーしました"
+chmod +x "${OPENCODE_GLOBAL_DIR}/tools/"*.sh 2>/dev/null || true
+chmod +x "${OPENCODE_GLOBAL_DIR}/tools/"*.py 2>/dev/null || true
+echo "   ✅ tools/ をコピーしました（実行権限を付与）"
 
 # scriptsディレクトリをコピー（バッチ起動用）
 echo "📜 スクリプトをコピー中..."
