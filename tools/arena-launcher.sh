@@ -1,7 +1,8 @@
 #!/bin/bash
 #
-# Arena Launcher v2 - 並列LLM競争システム
+# Arena Launcher v2.1 - 並列LLM競争システム
 # N数管理・ペイン分割・同期機能対応
+# 修正: プロンプトをシンプルに、最初のアクションを明確に
 #
 
 set -e
@@ -45,7 +46,7 @@ log_error() {
 print_header() {
     echo ""
     echo -e "${CYAN}=============================================="
-    echo "       Arena Launcher v2 - 並列LLM競争システム"
+    echo "       Arena Launcher v2.1 - 並列LLM競争システム"
     echo "==============================================${NC}"
     echo ""
 }
@@ -64,12 +65,6 @@ usage() {
     echo "Examples:"
     echo "  $0 '3Dブロック崩しゲームを作成してください'"
     echo "  $0 -n 2 '3Dブロック崩しゲームを作成してください'"
-    echo "  $0 --num 3 '3Dブロック崩しゲームを作成してください'"
-    echo ""
-    echo "N数による構成:"
-    echo "  N=1: comp-A-1, comp-B-1, comp-C-1 (3チーム)"
-    echo "  N=2: comp-A-1〜2, comp-B-1〜2, comp-C-1〜2 (6チーム)"
-    echo "  N=3: comp-A-1〜3, comp-B-1〜3, comp-C-1〜3 (9チーム)"
     exit 1
 }
 
@@ -108,13 +103,9 @@ fi
 init_arena_dir() {
     log_info "Arenaディレクトリを初期化中..."
     
-    # 既存のディレクトリを削除
     rm -rf "$ARENA_DIR"
-    
-    # ディレクトリ構造を作成
     mkdir -p "$ARENA_DIR"/{status,tasks,submissions,evaluations,final/integrated,prompts}
     
-    # 要件ファイルを作成
     echo "$REQUIREMENTS" > "$ARENA_DIR/requirements.md"
     
     # ステータスファイルを初期化
@@ -122,7 +113,6 @@ init_arena_dir() {
     echo "waiting" > "$ARENA_DIR/status/qa-gate.status"
     echo "waiting" > "$ARENA_DIR/status/integrator.status"
     
-    # 各チームのステータスファイルを作成
     for team in A B C; do
         for i in $(seq 1 $NUM_TEAMS); do
             echo "waiting" > "$ARENA_DIR/status/comp-${team}-${i}.status"
@@ -134,7 +124,7 @@ init_arena_dir() {
 }
 
 # =============================================================================
-# プロンプトファイル作成
+# プロンプトファイル作成（シンプル版）
 # =============================================================================
 
 create_prompts() {
@@ -142,73 +132,47 @@ create_prompts() {
     
     local total_teams=$((NUM_TEAMS * 3))
     
-    # Planner用プロンプト
-    cat > "$ARENA_DIR/prompts/planner.txt" << PLANNER_EOF
+    # Planner用プロンプト（シンプル版）
+    cat > "$ARENA_DIR/prompts/planner.txt" << 'PLANNER_EOF'
 あなたはArena Competition Systemの中央プランナーです。
 
-## 役割
-1. 要件を分析し、タスクを分解する
-2. 各チーム（comp-A, comp-B, comp-C）に適切なタスクを割り当てる
-3. 全体の進捗を監視する
+【要件】
+PLANNER_EOF
+    echo "$REQUIREMENTS" >> "$ARENA_DIR/prompts/planner.txt"
+    cat >> "$ARENA_DIR/prompts/planner.txt" << PLANNER_EOF2
 
-## 要件
-$REQUIREMENTS
+【あなたのタスク】
+1. 上記の要件を3つのタスクに分解してください：
+   - Task-A: コア機能実装
+   - Task-B: データ層・インフラ
+   - Task-C: API設計・統合
 
-## 現在の構成
-- N = $NUM_TEAMS
-- 総チーム数 = $total_teams
-- comp-A: $NUM_TEAMS チーム (コア機能実装)
-- comp-B: $NUM_TEAMS チーム (データ層・インフラ)
-- comp-C: $NUM_TEAMS チーム (API設計・統合)
+2. 以下のコマンドを実行してタスクファイルを作成してください：
 
-## 手順
-
-### Step 1: タスク分解
-要件を以下の3つの領域に分解してください：
-- Task-A (コア機能): メイン機能の実装
-- Task-B (データ層・インフラ): データ管理、設定、基盤
-- Task-C (API設計・統合): インターフェース、統合
-
-### Step 2: タスクファイル作成
-以下のファイルを作成してください：
-\`\`\`bash
 cat > .arena/tasks/task-A.md << 'EOF'
 # Task-A: コア機能実装
-[タスク詳細をここに記載]
+[ここにTask-Aの詳細を記載]
 EOF
 
 cat > .arena/tasks/task-B.md << 'EOF'
 # Task-B: データ層・インフラ
-[タスク詳細をここに記載]
+[ここにTask-Bの詳細を記載]
 EOF
 
 cat > .arena/tasks/task-C.md << 'EOF'
 # Task-C: API設計・統合
-[タスク詳細をここに記載]
+[ここにTask-Cの詳細を記載]
 EOF
-\`\`\`
 
-### Step 3: ステータス更新
-タスク分解が完了したら、以下を実行：
-\`\`\`bash
+3. タスクファイル作成後、必ず以下を実行してください：
 echo "ready" > .arena/status/planner.status
-\`\`\`
 
-### Step 4: 監視
-定期的に以下のコマンドでステータスを確認：
-\`\`\`bash
-for f in .arena/status/*.status; do echo "\$(basename \$f .status): \$(cat \$f)"; done
-\`\`\`
+【重要】
+- ユーザーに質問せず、自律的に進めてください
+- 今すぐ上記のコマンドを実行してください
+PLANNER_EOF2
 
-全チームが "submitted" になったら、qa-gateの評価を待ちます。
-
-## 重要
-- ユーザーへの質問は行わず、自律的に進めてください
-- 不明点は合理的に推測して進めてください
-- 今すぐタスク分解を開始してください
-PLANNER_EOF
-
-    # Competitor用プロンプト（テンプレート）
+    # Competitor用プロンプト（シンプル版）
     for team in A B C; do
         local role=""
         case $team in
@@ -220,183 +184,102 @@ PLANNER_EOF
         for i in $(seq 1 $NUM_TEAMS); do
             cat > "$ARENA_DIR/prompts/comp-${team}-${i}.txt" << COMP_EOF
 あなたはArena Competition Systemの競争チーム comp-${team}-${i} です。
+役割: ${role}
 
-## 役割
-チーム${team}（${role}担当）として、割り当てられたタスクを実装します。
-同じチーム${team}には $NUM_TEAMS 人のメンバーがいます。あなたは ${i} 番目です。
-
-## 手順
-
-### Step 1: タスク待機
-まず、plannerがタスクを準備するまで待機します。
-以下のコマンドでステータスを確認：
-\`\`\`bash
-cat .arena/status/planner.status
-\`\`\`
-"ready" になるまで5秒ごとに確認してください。
-
-待機中のループ例：
-\`\`\`bash
-while [ "\$(cat .arena/status/planner.status)" != "ready" ]; do
-    echo "Waiting for planner..."
-    sleep 5
-done
-echo "Planner is ready!"
-\`\`\`
-
-### Step 2: タスク読み込み
-plannerが準備完了したら、タスクを読み込みます：
-\`\`\`bash
-cat .arena/tasks/task-${team}.md
-\`\`\`
-
-### Step 3: 実装開始
-タスクに従って実装を行います。
-- 作業ディレクトリ: .arena/submissions/comp-${team}-${i}/
-- 実装中はステータスを更新：
-\`\`\`bash
-echo "working" > .arena/status/comp-${team}-${i}.status
-\`\`\`
-
-### Step 4: 提出
-実装が完了したら：
-1. 成果物を .arena/submissions/comp-${team}-${i}/ に配置
-2. README.mdを作成（実装内容の説明）
-3. ステータスを更新：
-\`\`\`bash
-echo "submitted" > .arena/status/comp-${team}-${i}.status
-\`\`\`
-
-## 要件（参考）
+【要件】
 $REQUIREMENTS
 
-## 重要
-- ユーザーへの質問は行わず、自律的に進めてください
-- 他のチームと競争しています。品質と速度の両方を意識してください
-- エラーが発生した場合は、ステータスを "error" に更新してください
-- まず Step 1 のタスク待機から開始してください
+【あなたのタスク】
+
+Step 1: まず以下を実行してplannerの準備完了を確認：
+cat .arena/status/planner.status
+
+"ready"と表示されたらStep 2へ。
+"initializing"の場合は10秒後に再度確認してください。
+
+Step 2: タスクを読み込む：
+cat .arena/tasks/task-${team}.md
+
+Step 3: 実装を開始（ステータス更新）：
+echo "working" > .arena/status/comp-${team}-${i}.status
+
+Step 4: 実装を行う：
+- 作業ディレクトリ: .arena/submissions/comp-${team}-${i}/
+- 必要なファイルをすべてこのディレクトリに作成
+
+Step 5: 完了したらステータスを更新：
+echo "submitted" > .arena/status/comp-${team}-${i}.status
+
+【重要】
+- ユーザーに質問せず、自律的に進めてください
+- 今すぐStep 1から開始してください
 COMP_EOF
         done
     done
 
-    # QA Gate用プロンプト
+    # QA Gate用プロンプト（シンプル版）
     cat > "$ARENA_DIR/prompts/qa-gate.txt" << QA_EOF
 あなたはArena Competition SystemのQA Gateです。
 
-## 役割
-全チームの提出物を評価し、品質を判定します。
+【あなたのタスク】
 
-## 現在の構成
-- 総チーム数: $total_teams
-- 期待する提出数: $total_teams
+Step 1: 全チームの提出状況を確認：
+grep -c "submitted" .arena/status/comp-*.status 2>/dev/null || echo "0"
 
-## 手順
+$total_teams と表示されたらStep 2へ。
+それ以外の場合は30秒後に再度確認してください。
 
-### Step 1: 提出待機
-全チームが提出完了するまで待機します。
-以下のコマンドで確認：
-\`\`\`bash
-submitted=\$(grep -l "submitted" .arena/status/comp-*.status 2>/dev/null | wc -l)
-echo "Submitted: \$submitted / $total_teams"
-\`\`\`
-
-待機ループ例：
-\`\`\`bash
-while true; do
-    submitted=\$(grep -l "submitted" .arena/status/comp-*.status 2>/dev/null | wc -l)
-    if [ "\$submitted" -eq $total_teams ]; then
-        echo "All teams submitted!"
-        break
-    fi
-    echo "Waiting... \$submitted / $total_teams submitted"
-    sleep 10
-done
-\`\`\`
-
-### Step 2: 評価開始
-全チームが提出完了したら、評価を開始：
-\`\`\`bash
+Step 2: 評価を開始（ステータス更新）：
 echo "evaluating" > .arena/status/qa-gate.status
-\`\`\`
 
-### Step 3: 各提出物の評価
-.arena/submissions/ 内の各チームの成果物を評価：
-- コード品質
-- 要件の充足度
-- パフォーマンス
-- 保守性
+Step 3: 各チームの提出物を評価：
+ls -la .arena/submissions/
 
-### Step 4: 評価結果の作成
-.arena/evaluations/evaluation.md に評価結果を記載：
-- 各チームのスコア（100点満点）
-- 長所・短所
-- 推奨する最優秀チーム
+各チームのコードを確認し、品質を評価してください。
 
-### Step 5: ステータス更新
-評価完了後：
-\`\`\`bash
+Step 4: 評価結果を作成：
+cat > .arena/evaluations/evaluation.md << 'EOF'
+# 評価結果
+[各チームの評価をここに記載]
+## 推奨チーム: [最優秀チーム名]
+EOF
+
+Step 5: 完了したらステータスを更新：
 echo "done" > .arena/status/qa-gate.status
-\`\`\`
 
-## 重要
-- 公平に評価してください
-- ユーザーへの質問は行わず、自律的に進めてください
-- まず Step 1 の提出待機から開始してください
+【重要】
+- ユーザーに質問せず、自律的に進めてください
+- 今すぐStep 1から開始してください
 QA_EOF
 
-    # Integrator用プロンプト
+    # Integrator用プロンプト（シンプル版）
     cat > "$ARENA_DIR/prompts/integrator.txt" << INT_EOF
 あなたはArena Competition Systemの統合担当です。
 
-## 役割
-QA Gateの評価結果に基づき、最良の実装を選択・統合します。
+【あなたのタスク】
 
-## 手順
-
-### Step 1: QA評価待機
-QA Gateの評価完了を待機：
-\`\`\`bash
+Step 1: QA Gateの評価完了を確認：
 cat .arena/status/qa-gate.status
-\`\`\`
 
-待機ループ例：
-\`\`\`bash
-while [ "\$(cat .arena/status/qa-gate.status)" != "done" ]; do
-    echo "Waiting for QA Gate..."
-    sleep 10
-done
-echo "QA Gate evaluation complete!"
-\`\`\`
+"done"と表示されたらStep 2へ。
+それ以外の場合は30秒後に再度確認してください。
 
-### Step 2: 評価結果の確認
-\`\`\`bash
+Step 2: 評価結果を確認：
 cat .arena/evaluations/evaluation.md
-\`\`\`
 
-### Step 3: 統合開始
-\`\`\`bash
+Step 3: 統合を開始（ステータス更新）：
 echo "integrating" > .arena/status/integrator.status
-\`\`\`
 
-### Step 4: 最終成果物の作成
-評価結果に基づき、最良の実装を選択または統合：
+Step 4: 最終成果物を作成：
 - 作業ディレクトリ: .arena/final/integrated/
-- 必要に応じて複数チームの成果を組み合わせる
-- README.mdを作成（統合内容の説明）
+- 評価結果に基づき、最良の実装を選択または統合
 
-### Step 5: 完了
-\`\`\`bash
+Step 5: 完了したらステータスを更新：
 echo "done" > .arena/status/integrator.status
-\`\`\`
 
-最終成果物の場所を報告：
-\`\`\`
-最終成果物: .arena/final/integrated/
-\`\`\`
-
-## 重要
-- ユーザーへの質問は行わず、自律的に進めてください
-- まず Step 1 のQA評価待機から開始してください
+【重要】
+- ユーザーに質問せず、自律的に進めてください
+- 今すぐStep 1から開始してください
 INT_EOF
 
     log_ok "プロンプトファイルを作成しました"
@@ -409,39 +292,25 @@ INT_EOF
 create_tmux_session() {
     log_info "tmuxセッションを作成中..."
     
-    # 既存セッションを削除
     tmux kill-session -t "$SESSION_NAME" 2>/dev/null || true
-    
-    # 新しいセッションを作成（plannerウィンドウ）
     tmux new-session -d -s "$SESSION_NAME" -n "planner"
     
     if [ "$NUM_TEAMS" -eq 1 ]; then
-        # N=1: 各compを個別ウィンドウで作成
         for team in A B C; do
             tmux new-window -t "$SESSION_NAME" -n "comp-${team}-1"
         done
     else
-        # N>=2: 各comp-A/B/Cを1ウィンドウにまとめ、ペイン分割
         for team in A B C; do
             tmux new-window -t "$SESSION_NAME" -n "comp-${team}"
-            
-            # 最初のペインは既に存在するので、2番目以降を追加
             for i in $(seq 2 $NUM_TEAMS); do
                 tmux split-window -t "$SESSION_NAME:comp-${team}" -v
             done
-            
-            # ペインを均等に配置
             tmux select-layout -t "$SESSION_NAME:comp-${team}" even-vertical
         done
     fi
     
-    # QA Gate ウィンドウ
     tmux new-window -t "$SESSION_NAME" -n "qa-gate"
-    
-    # Integrator ウィンドウ
     tmux new-window -t "$SESSION_NAME" -n "integrator"
-    
-    # Monitor ウィンドウ
     tmux new-window -t "$SESSION_NAME" -n "monitor"
     
     log_ok "tmuxセッションを作成しました"
@@ -471,7 +340,6 @@ start_agents() {
     
     # Competitor起動
     if [ "$NUM_TEAMS" -eq 1 ]; then
-        # N=1: 個別ウィンドウ
         for team in A B C; do
             log_info "  comp-${team}-1を起動中..."
             tmux send-keys -t "$SESSION_NAME:comp-${team}-1" "$OPENCODE_CMD" Enter
@@ -485,7 +353,6 @@ start_agents() {
             log_ok "  comp-${team}-1を起動しました"
         done
     else
-        # N>=2: ペイン分割
         for team in A B C; do
             for i in $(seq 1 $NUM_TEAMS); do
                 pane_index=$((i - 1))
@@ -572,7 +439,12 @@ print_completion() {
     fi
     echo -e "${CYAN}ステータス確認:${NC}"
     echo "  monitorウィンドウで自動更新されます"
-    echo "  または: cat .arena/status/*.status"
+    echo ""
+    echo -e "${YELLOW}【トラブルシューティング】${NC}"
+    echo "  エージェントが動かない場合:"
+    echo "    1. 該当ウィンドウに移動"
+    echo "    2. Enterキーを押す（プロンプト再送信）"
+    echo "    3. または手動でコマンドを入力"
     echo ""
 }
 
@@ -593,7 +465,6 @@ main() {
     start_agents
     print_completion
     
-    # TTYの場合は自動アタッチ
     if [ -t 0 ]; then
         tmux attach -t "$SESSION_NAME"
     else
