@@ -1,68 +1,41 @@
 ---
-description: Arena Competition System - 複数LLMエージェントを並列実行して競争させる
+description: Arena Competition System (N=1) - 3チームで並列競争
 ---
 
-# Arena Competition System 起動結果
+# Arena Competition System 起動
 
-以下のコマンドを実行してArena Competition Systemを起動しました：
+以下のコマンドを実行してArena Competition Systemを起動します：
 
-!`~/.config/opencode/tools/arena-launcher.sh "$ARGUMENTS" 2>&1`
+!`~/.config/opencode/tools/arena-launcher.sh -n 1 "$ARGUMENTS" 2>&1`
 
-## 起動後の確認方法
+## 構成
 
-Arenaセッションが起動しました。以下の手順で確認してください：
+- **N = 1**（3チーム）
+- comp-A-1（コア機能実装）
+- comp-B-1（データ層・インフラ）
+- comp-C-1（API設計・統合）
+- qa-gate（品質評価）
+- integrator（最終統合）
 
-### 1. tmuxセッションにアタッチ
+## 確認方法
 
-**別のターミナルウィンドウ**を開いて、以下のコマンドを実行してください：
-
+別のターミナルで：
 ```bash
 tmux attach -t arena
 ```
 
-### 2. ウィンドウ一覧
-
-| ウィンドウ | 名前 | 役割 |
-|-----------|------|------|
-| 0 | planner | 中央プランナー（タスク分解・監視） |
-| 1 | comp-A | チームA（コア機能実装） |
-| 2 | comp-B | チームB（データ層・インフラ） |
-| 3 | comp-C | チームC（API設計・統合） |
-| 4 | qa-gate | QA Gate（品質評価） |
-| 5 | integrator | 統合担当（最終統合） |
-
-### 3. ウィンドウ切り替え
-
-```
-Ctrl+b, n     次のウィンドウ
-Ctrl+b, p     前のウィンドウ
-Ctrl+b, 0-5   番号でウィンドウ選択
-```
-
-## 注意事項
-
-- このOpencodeセッションは終了しても構いません
-- 各ウィンドウで別々のOpencodeエージェントが並列で動作しています
-- 進捗を確認するには、tmuxセッションにアタッチしてください
-
-## トラブルシューティング
-
-### セッションが見つからない場合
+## ステータス確認
 
 ```bash
-# セッション一覧を確認
-tmux list-sessions
-
-# arenaセッションがない場合は手動で起動
-~/.config/opencode/tools/arena-launcher.sh "要件テキスト"
+~/.config/opencode/tools/arena-recover.sh status
 ```
 
-### tmuxがインストールされていない場合
+## エージェント復旧
 
 ```bash
-# Ubuntu/Debian
-sudo apt install tmux
+# 待機中のエージェントを起こす
+~/.config/opencode/tools/arena-recover.sh wake comp-A-1
 
-# macOS
-brew install tmux
+# エラー状態のエージェントを再起動
+~/.config/opencode/tools/arena-recover.sh restart comp-B-1
 ```
