@@ -1,11 +1,35 @@
 #!/bin/bash
 #
-# Arena Launcher v2.1 - 並列LLM競争システム
-# N数管理・ペイン分割・同期機能対応
-# 修正: プロンプトをシンプルに、最初のアクションを明確に
+# Arena Launcher v3.0 - 並列LLM競争システム
+# Tmux-Orchestrator (https://github.com/Jedward23/Tmux-Orchestrator) を参考に作成
+#
+# 主な改善点:
+# - メッセージ送信の分離（メッセージとEnterを別々に送信）
+# - 適切な待機時間（Opencode起動5秒、メッセージ後0.5秒）
+# - 作業ディレクトリの明示的指定
+# - 実行結果の検証
+# - 短いプロンプト（詳細は別ファイル参照）
 #
 
-set -e
+# エラーで即座に終了しない（個別にハンドリング）
+set +e
+
+# =============================================================================
+# スクリプトディレクトリとユーティリティ読み込み
+# =============================================================================
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# ユーティリティが存在すれば読み込む
+if [ -f "$SCRIPT_DIR/arena-utils.sh" ]; then
+    source "$SCRIPT_DIR/arena-utils.sh"
+else
+    # 最小限のログ関数を定義
+    log_info() { echo "[INFO] $1"; }
+    log_ok() { echo "[OK] $1"; }
+    log_warn() { echo "[WARN] $1"; }
+    log_error() { echo "[ERROR] $1"; }
+fi
 
 # =============================================================================
 # 設定
@@ -14,6 +38,12 @@ set -e
 SESSION_NAME="arena"
 ARENA_DIR=".arena"
 OPENCODE_CMD="opencode"
+WORK_DIR="$(pwd)"
+
+# タイミング設定（Tmux-Orchestratorの推奨値に基づく）
+OPENCODE_STARTUP_WAIT=5      # Opencode起動待機時間（秒）
+MESSAGE_SEND_DELAY=0.5       # メッセージ送信後の待機時間（秒）
+LINE_SEND_DELAY=0.1          # 行送信間の待機時間（秒）
 
 # カラー定義
 RED='\033[0;31m'
@@ -21,39 +51,20 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 # =============================================================================
 # ヘルパー関数
 # =============================================================================
 
-log_info() {
-    echo -e "${BLUE}[INFO]${NC} $1"
-}
-
-log_ok() {
-    echo -e "${GREEN}[OK]${NC} $1"
-}
-
-log_warn() {
-    echo -e "${YELLOW}[WARN]${NC} $1"
-}
-
-log_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
-
 print_header() {
     echo ""
     echo -e "${CYAN}=============================================="
-    echo "       Arena Launcher v2.1 - 並列LLM競争システム"
+    echo "       Arena Launcher v3.0"
+    echo "       Tmux-Orchestrator Pattern"
     echo "==============================================${NC}"
     echo ""
 }
-
-# =============================================================================
-# 使用方法
-# =============================================================================
 
 usage() {
     echo "Usage: $0 [OPTIONS] <requirements>"
@@ -66,6 +77,65 @@ usage() {
     echo "  $0 '3Dブロック崩しゲームを作成してください'"
     echo "  $0 -n 2 '3Dブロック崩しゲームを作成してください'"
     exit 1
+}
+
+# =============================================================================
+# メッセージ送信関数（Tmux-Orchestrator方式）
+# =============================================================================
+
+# 重要: メッセージとEnterを分離し、間に待機を入れる
+send_to_opencode() {
+    local target="$1"
+    local message="$2"
+    
+    # メッセージを送信（-- でオプション終了を明示）
+    tmux send-keys -t "$target" -- "$message"
+    
+    # UIが登録するまで待機（重要！）
+    sleep "$MESSAGE_SEND_DELAY"
+    
+    # Enterを送信
+    tmux send-keys -t "$target" Enter
+}
+
+# ファイルからプロンプトを送信
+send_prompt_file() {
+    local target="$1"
+    local file="$2"
+    
+    if [ ! -f "$file" ]; then
+        log_error "ファイルが見つかりません: $file"
+        return 1
+    fi
+    
+    # ファイルの内容を1行ずつ送信
+    while IFS= read -r line || [ -n "$line" ]; do
+        tmux send-keys -t "$target" -- "$line"
+        sleep "$LINE_SEND_DELAY"
+    done < "$file"
+    
+    # 最後に待機してからEnter
+    sleep "$MESSAGE_SEND_DELAY"
+    tmux send-keys -t "$target" Enter
+}
+
+# ウィンドウの出力をキャプチャ
+capture_output() {
+    local target="$1"
+    local lines="${2:-30}"
+    tmux capture-pane -t "$target" -p -S "-$lines" 2>/dev/null | tail -n "$lines"
+}
+
+# Opencode起動確認
+verify_opencode_started() {
+    local target="$1"
+    local output=$(capture_output "$target" 30)
+    
+    if echo "$output" | grep -qi "opencode\|Build\|variants\|agents"; then
+        return 0
+    else
+        return 1
+    fi
 }
 
 # =============================================================================
@@ -104,8 +174,9 @@ init_arena_dir() {
     log_info "Arenaディレクトリを初期化中..."
     
     rm -rf "$ARENA_DIR"
-    mkdir -p "$ARENA_DIR"/{status,tasks,submissions,evaluations,final/integrated,prompts}
+    mkdir -p "$ARENA_DIR"/{status,tasks,submissions,evaluations,final/integrated,prompts,logs}
     
+    # 要件を保存
     echo "$REQUIREMENTS" > "$ARENA_DIR/requirements.md"
     
     # ステータスファイルを初期化
@@ -124,7 +195,7 @@ init_arena_dir() {
 }
 
 # =============================================================================
-# プロンプトファイル作成（シンプル版）
+# プロンプト作成（短く、明確に）
 # =============================================================================
 
 create_prompts() {
@@ -132,47 +203,42 @@ create_prompts() {
     
     local total_teams=$((NUM_TEAMS * 3))
     
-    # Planner用プロンプト（シンプル版）
-    cat > "$ARENA_DIR/prompts/planner.txt" << 'PLANNER_EOF'
-あなたはArena Competition Systemの中央プランナーです。
+    # -----------------------------------------------------------------
+    # Planner用プロンプト（短く、最初のアクションを明確に）
+    # -----------------------------------------------------------------
+    cat > "$ARENA_DIR/prompts/planner.txt" << PLANNER_EOF
+あなたはArena Plannerです。要件を読んでタスクを分解してください。
 
 【要件】
-PLANNER_EOF
-    echo "$REQUIREMENTS" >> "$ARENA_DIR/prompts/planner.txt"
-    cat >> "$ARENA_DIR/prompts/planner.txt" << PLANNER_EOF2
+$REQUIREMENTS
 
-【あなたのタスク】
-1. 上記の要件を3つのタスクに分解してください：
-   - Task-A: コア機能実装
-   - Task-B: データ層・インフラ
-   - Task-C: API設計・統合
-
-2. 以下のコマンドを実行してタスクファイルを作成してください：
+【今すぐ実行してください】
+1. cat .arena/requirements.md で要件を確認
+2. 以下の3つのタスクファイルを作成:
 
 cat > .arena/tasks/task-A.md << 'EOF'
 # Task-A: コア機能実装
-[ここにTask-Aの詳細を記載]
+（具体的なタスク内容を記載）
 EOF
 
 cat > .arena/tasks/task-B.md << 'EOF'
 # Task-B: データ層・インフラ
-[ここにTask-Bの詳細を記載]
+（具体的なタスク内容を記載）
 EOF
 
 cat > .arena/tasks/task-C.md << 'EOF'
 # Task-C: API設計・統合
-[ここにTask-Cの詳細を記載]
+（具体的なタスク内容を記載）
 EOF
 
-3. タスクファイル作成後、必ず以下を実行してください：
-echo "ready" > .arena/status/planner.status
+3. 完了したら: echo "ready" > .arena/status/planner.status
 
-【重要】
-- ユーザーに質問せず、自律的に進めてください
-- 今すぐ上記のコマンドを実行してください
-PLANNER_EOF2
+ユーザーに質問せず、自律的に進めてください。
+PLANNER_EOF
 
-    # Competitor用プロンプト（シンプル版）
+    # -----------------------------------------------------------------
+    # Competitor用プロンプト
+    # -----------------------------------------------------------------
     for team in A B C; do
         local role=""
         case $team in
@@ -183,223 +249,189 @@ PLANNER_EOF2
         
         for i in $(seq 1 $NUM_TEAMS); do
             cat > "$ARENA_DIR/prompts/comp-${team}-${i}.txt" << COMP_EOF
-あなたはArena Competition Systemの競争チーム comp-${team}-${i} です。
-役割: ${role}
+あなたは comp-${team}-${i} です。役割: ${role}
 
-【要件】
-$REQUIREMENTS
+【今すぐ実行してください】
+1. plannerの準備を確認: cat .arena/status/planner.status
+   - "ready"なら次へ進む
+   - "initializing"なら10秒後に再確認
 
-【あなたのタスク】
+2. タスクを読む: cat .arena/tasks/task-${team}.md
 
-Step 1: まず以下を実行してplannerの準備完了を確認：
-cat .arena/status/planner.status
+3. ステータス更新: echo "working" > .arena/status/comp-${team}-${i}.status
 
-"ready"と表示されたらStep 2へ。
-"initializing"の場合は10秒後に再度確認してください。
+4. 実装を開始（作業ディレクトリ: .arena/submissions/comp-${team}-${i}/）
 
-Step 2: タスクを読み込む：
-cat .arena/tasks/task-${team}.md
+5. 完了したら: echo "submitted" > .arena/status/comp-${team}-${i}.status
 
-Step 3: 実装を開始（ステータス更新）：
-echo "working" > .arena/status/comp-${team}-${i}.status
-
-Step 4: 実装を行う：
-- 作業ディレクトリ: .arena/submissions/comp-${team}-${i}/
-- 必要なファイルをすべてこのディレクトリに作成
-
-Step 5: 完了したらステータスを更新：
-echo "submitted" > .arena/status/comp-${team}-${i}.status
-
-【重要】
-- ユーザーに質問せず、自律的に進めてください
-- 今すぐStep 1から開始してください
+ユーザーに質問せず、自律的に進めてください。
 COMP_EOF
         done
     done
 
-    # QA Gate用プロンプト（シンプル版）
+    # -----------------------------------------------------------------
+    # QA Gate用プロンプト
+    # -----------------------------------------------------------------
     cat > "$ARENA_DIR/prompts/qa-gate.txt" << QA_EOF
-あなたはArena Competition SystemのQA Gateです。
+あなたはQA Gateです。全チームの提出を評価してください。
 
-【あなたのタスク】
+【今すぐ実行してください】
+1. 提出状況を確認: ls .arena/status/comp-*.status | xargs -I {} sh -c 'echo "\$(basename {} .status): \$(cat {})"'
+   - 全チーム（${total_teams}チーム）が"submitted"なら次へ
+   - まだなら30秒後に再確認
 
-Step 1: 全チームの提出状況を確認：
-grep -c "submitted" .arena/status/comp-*.status 2>/dev/null || echo "0"
+2. ステータス更新: echo "evaluating" > .arena/status/qa-gate.status
 
-$total_teams と表示されたらStep 2へ。
-それ以外の場合は30秒後に再度確認してください。
+3. 各チームの提出物を評価: ls -la .arena/submissions/
 
-Step 2: 評価を開始（ステータス更新）：
-echo "evaluating" > .arena/status/qa-gate.status
-
-Step 3: 各チームの提出物を評価：
-ls -la .arena/submissions/
-
-各チームのコードを確認し、品質を評価してください。
-
-Step 4: 評価結果を作成：
+4. 評価結果を作成:
 cat > .arena/evaluations/evaluation.md << 'EOF'
 # 評価結果
-[各チームの評価をここに記載]
-## 推奨チーム: [最優秀チーム名]
+## 各チームの評価
+（評価内容を記載）
+## 推奨チーム: （最優秀チーム名）
 EOF
 
-Step 5: 完了したらステータスを更新：
-echo "done" > .arena/status/qa-gate.status
+5. 完了したら: echo "done" > .arena/status/qa-gate.status
 
-【重要】
-- ユーザーに質問せず、自律的に進めてください
-- 今すぐStep 1から開始してください
+ユーザーに質問せず、自律的に進めてください。
 QA_EOF
 
-    # Integrator用プロンプト（シンプル版）
+    # -----------------------------------------------------------------
+    # Integrator用プロンプト
+    # -----------------------------------------------------------------
     cat > "$ARENA_DIR/prompts/integrator.txt" << INT_EOF
-あなたはArena Competition Systemの統合担当です。
+あなたはIntegratorです。最終成果物を作成してください。
 
-【あなたのタスク】
+【今すぐ実行してください】
+1. QA Gateの完了を確認: cat .arena/status/qa-gate.status
+   - "done"なら次へ進む
+   - それ以外なら30秒後に再確認
 
-Step 1: QA Gateの評価完了を確認：
-cat .arena/status/qa-gate.status
+2. 評価結果を読む: cat .arena/evaluations/evaluation.md
 
-"done"と表示されたらStep 2へ。
-それ以外の場合は30秒後に再度確認してください。
+3. ステータス更新: echo "integrating" > .arena/status/integrator.status
 
-Step 2: 評価結果を確認：
-cat .arena/evaluations/evaluation.md
+4. 最終成果物を作成（作業ディレクトリ: .arena/final/integrated/）
+   - 評価結果に基づき、最良の実装を選択または統合
 
-Step 3: 統合を開始（ステータス更新）：
-echo "integrating" > .arena/status/integrator.status
+5. 完了したら: echo "done" > .arena/status/integrator.status
 
-Step 4: 最終成果物を作成：
-- 作業ディレクトリ: .arena/final/integrated/
-- 評価結果に基づき、最良の実装を選択または統合
-
-Step 5: 完了したらステータスを更新：
-echo "done" > .arena/status/integrator.status
-
-【重要】
-- ユーザーに質問せず、自律的に進めてください
-- 今すぐStep 1から開始してください
+ユーザーに質問せず、自律的に進めてください。
 INT_EOF
 
     log_ok "プロンプトファイルを作成しました"
 }
 
 # =============================================================================
-# tmuxセッション作成
+# tmuxセッション作成（作業ディレクトリを明示的に指定）
 # =============================================================================
 
 create_tmux_session() {
     log_info "tmuxセッションを作成中..."
     
+    # 既存セッションを削除
     tmux kill-session -t "$SESSION_NAME" 2>/dev/null || true
-    tmux new-session -d -s "$SESSION_NAME" -n "planner"
     
+    # 新しいセッションを作成（作業ディレクトリを指定）
+    tmux new-session -d -s "$SESSION_NAME" -n "planner" -c "$WORK_DIR"
+    
+    # Competitorウィンドウを作成
     if [ "$NUM_TEAMS" -eq 1 ]; then
         for team in A B C; do
-            tmux new-window -t "$SESSION_NAME" -n "comp-${team}-1"
+            tmux new-window -t "$SESSION_NAME" -n "comp-${team}-1" -c "$WORK_DIR"
         done
     else
         for team in A B C; do
-            tmux new-window -t "$SESSION_NAME" -n "comp-${team}"
+            tmux new-window -t "$SESSION_NAME" -n "comp-${team}" -c "$WORK_DIR"
             for i in $(seq 2 $NUM_TEAMS); do
-                tmux split-window -t "$SESSION_NAME:comp-${team}" -v
+                tmux split-window -t "$SESSION_NAME:comp-${team}" -v -c "$WORK_DIR"
             done
             tmux select-layout -t "$SESSION_NAME:comp-${team}" even-vertical
         done
     fi
     
-    tmux new-window -t "$SESSION_NAME" -n "qa-gate"
-    tmux new-window -t "$SESSION_NAME" -n "integrator"
-    tmux new-window -t "$SESSION_NAME" -n "monitor"
+    # QA Gate, Integrator, Monitorウィンドウを作成
+    tmux new-window -t "$SESSION_NAME" -n "qa-gate" -c "$WORK_DIR"
+    tmux new-window -t "$SESSION_NAME" -n "integrator" -c "$WORK_DIR"
+    tmux new-window -t "$SESSION_NAME" -n "monitor" -c "$WORK_DIR"
     
     log_ok "tmuxセッションを作成しました"
 }
 
 # =============================================================================
-# エージェント起動
+# エージェント起動（Tmux-Orchestrator方式）
 # =============================================================================
+
+start_single_agent() {
+    local target="$1"
+    local prompt_file="$2"
+    local agent_name="$3"
+    
+    log_info "  $agent_name を起動中..."
+    
+    # Step 1: Opencodeを起動
+    tmux send-keys -t "$target" "$OPENCODE_CMD"
+    sleep "$MESSAGE_SEND_DELAY"
+    tmux send-keys -t "$target" Enter
+    
+    # Step 2: Opencode起動を待機（重要！）
+    log_info "    Opencode起動待機中... (${OPENCODE_STARTUP_WAIT}秒)"
+    sleep "$OPENCODE_STARTUP_WAIT"
+    
+    # Step 3: 起動確認
+    if verify_opencode_started "$target"; then
+        log_ok "    Opencode起動確認: $agent_name"
+    else
+        log_warn "    Opencode起動未確認: $agent_name（続行します）"
+    fi
+    
+    # Step 4: プロンプトを送信
+    if [ -f "$prompt_file" ]; then
+        log_info "    プロンプト送信中..."
+        send_prompt_file "$target" "$prompt_file"
+        log_ok "    プロンプト送信完了: $agent_name"
+    fi
+    
+    log_ok "  $agent_name を起動しました"
+}
 
 start_agents() {
     log_info "エージェントを起動中..."
     
-    local prompt_file
-    local target
+    local failed_agents=()
     
     # Planner起動
-    log_info "  Plannerを起動中..."
-    tmux send-keys -t "$SESSION_NAME:planner" "$OPENCODE_CMD" Enter
-    sleep 3
-    prompt_file="$ARENA_DIR/prompts/planner.txt"
-    while IFS= read -r line || [ -n "$line" ]; do
-        tmux send-keys -t "$SESSION_NAME:planner" -- "$line"
-        sleep 0.05
-    done < "$prompt_file"
-    tmux send-keys -t "$SESSION_NAME:planner" Enter
-    log_ok "  Plannerを起動しました"
+    start_single_agent "$SESSION_NAME:planner" "$ARENA_DIR/prompts/planner.txt" "planner"
     
     # Competitor起動
     if [ "$NUM_TEAMS" -eq 1 ]; then
         for team in A B C; do
-            log_info "  comp-${team}-1を起動中..."
-            tmux send-keys -t "$SESSION_NAME:comp-${team}-1" "$OPENCODE_CMD" Enter
-            sleep 3
-            prompt_file="$ARENA_DIR/prompts/comp-${team}-1.txt"
-            while IFS= read -r line || [ -n "$line" ]; do
-                tmux send-keys -t "$SESSION_NAME:comp-${team}-1" -- "$line"
-                sleep 0.05
-            done < "$prompt_file"
-            tmux send-keys -t "$SESSION_NAME:comp-${team}-1" Enter
-            log_ok "  comp-${team}-1を起動しました"
+            start_single_agent "$SESSION_NAME:comp-${team}-1" "$ARENA_DIR/prompts/comp-${team}-1.txt" "comp-${team}-1"
         done
     else
         for team in A B C; do
             for i in $(seq 1 $NUM_TEAMS); do
-                pane_index=$((i - 1))
-                target="$SESSION_NAME:comp-${team}.${pane_index}"
-                log_info "  comp-${team}-${i}を起動中..."
-                tmux send-keys -t "$target" "$OPENCODE_CMD" Enter
-                sleep 3
-                prompt_file="$ARENA_DIR/prompts/comp-${team}-${i}.txt"
-                while IFS= read -r line || [ -n "$line" ]; do
-                    tmux send-keys -t "$target" -- "$line"
-                    sleep 0.05
-                done < "$prompt_file"
-                tmux send-keys -t "$target" Enter
-                log_ok "  comp-${team}-${i}を起動しました"
+                local pane_index=$((i - 1))
+                local target="$SESSION_NAME:comp-${team}.${pane_index}"
+                start_single_agent "$target" "$ARENA_DIR/prompts/comp-${team}-${i}.txt" "comp-${team}-${i}"
             done
         done
     fi
     
     # QA Gate起動
-    log_info "  QA Gateを起動中..."
-    tmux send-keys -t "$SESSION_NAME:qa-gate" "$OPENCODE_CMD" Enter
-    sleep 3
-    prompt_file="$ARENA_DIR/prompts/qa-gate.txt"
-    while IFS= read -r line || [ -n "$line" ]; do
-        tmux send-keys -t "$SESSION_NAME:qa-gate" -- "$line"
-        sleep 0.05
-    done < "$prompt_file"
-    tmux send-keys -t "$SESSION_NAME:qa-gate" Enter
-    log_ok "  QA Gateを起動しました"
+    start_single_agent "$SESSION_NAME:qa-gate" "$ARENA_DIR/prompts/qa-gate.txt" "qa-gate"
     
     # Integrator起動
-    log_info "  Integratorを起動中..."
-    tmux send-keys -t "$SESSION_NAME:integrator" "$OPENCODE_CMD" Enter
-    sleep 3
-    prompt_file="$ARENA_DIR/prompts/integrator.txt"
-    while IFS= read -r line || [ -n "$line" ]; do
-        tmux send-keys -t "$SESSION_NAME:integrator" -- "$line"
-        sleep 0.05
-    done < "$prompt_file"
-    tmux send-keys -t "$SESSION_NAME:integrator" Enter
-    log_ok "  Integratorを起動しました"
+    start_single_agent "$SESSION_NAME:integrator" "$ARENA_DIR/prompts/integrator.txt" "integrator"
     
     # Monitor起動
-    log_info "  Monitorを起動中..."
+    log_info "  Monitor を起動中..."
     local monitor_cmd="watch -n 5 'echo \"=== Arena Status ===\"; echo \"\"; for f in .arena/status/*.status; do printf \"%-20s: %s\\n\" \"\$(basename \$f .status)\" \"\$(cat \$f)\"; done; echo \"\"; echo \"=== Submissions ===\"; ls -la .arena/submissions/ 2>/dev/null || echo \"No submissions yet\"'"
-    tmux send-keys -t "$SESSION_NAME:monitor" "$monitor_cmd" Enter
-    log_ok "  Monitorを起動しました"
+    tmux send-keys -t "$SESSION_NAME:monitor" "$monitor_cmd"
+    sleep "$MESSAGE_SEND_DELAY"
+    tmux send-keys -t "$SESSION_NAME:monitor" Enter
+    log_ok "  Monitor を起動しました"
     
     log_ok "全エージェントを起動しました"
 }
@@ -417,6 +449,7 @@ print_completion() {
     echo -e "${CYAN}構成:${NC}"
     echo "  N = $NUM_TEAMS"
     echo "  チーム数 = $((NUM_TEAMS * 3))"
+    echo "  作業ディレクトリ = $WORK_DIR"
     echo ""
     echo -e "${CYAN}確認方法:${NC}"
     echo "  tmux attach -t $SESSION_NAME"
@@ -437,14 +470,15 @@ print_completion() {
         echo "  Ctrl+b, o     次のペインへ"
         echo ""
     fi
-    echo -e "${CYAN}ステータス確認:${NC}"
-    echo "  monitorウィンドウで自動更新されます"
+    echo -e "${CYAN}エージェントにメッセージを送信:${NC}"
+    echo "  $SCRIPT_DIR/send-opencode-message.sh arena:planner \"メッセージ\""
     echo ""
     echo -e "${YELLOW}【トラブルシューティング】${NC}"
     echo "  エージェントが動かない場合:"
-    echo "    1. 該当ウィンドウに移動"
-    echo "    2. Enterキーを押す（プロンプト再送信）"
-    echo "    3. または手動でコマンドを入力"
+    echo "    1. 該当ウィンドウに移動 (Ctrl+b, 番号)"
+    echo "    2. 出力を確認"
+    echo "    3. 手動でコマンドを入力"
+    echo "    4. または: send-opencode-message.sh arena:エージェント名 \"続行してください\""
     echo ""
 }
 
@@ -457,6 +491,7 @@ main() {
     
     log_info "N = $NUM_TEAMS (チーム数: $((NUM_TEAMS * 3)))"
     log_info "要件: $REQUIREMENTS"
+    log_info "作業ディレクトリ: $WORK_DIR"
     echo ""
     
     init_arena_dir
@@ -465,6 +500,7 @@ main() {
     start_agents
     print_completion
     
+    # TTYの場合は自動アタッチ
     if [ -t 0 ]; then
         tmux attach -t "$SESSION_NAME"
     else
